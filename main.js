@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -195,9 +196,9 @@ function createHallway(group, x, z, width, depth, height) {
     group.add(hallway);
 }
 
-// Add building to scene
-const building = createBuilding();
-scene.add(building);
+// Create building (will be added when model is loaded, or keep for default)
+let building = createBuilding();
+// scene.add(building); // Remove initial building to show upload first
 
 // Store all rooms for detection
 const rooms = [];
@@ -206,6 +207,108 @@ building.traverse((child) => {
         rooms.push(child);
     }
 });
+
+// File upload handling
+const modelInput = document.getElementById('model-upload');
+const uploadSection = document.getElementById('upload-section');
+uploadSection.addEventListener('mouseenter', () => {
+    // Exit pointer lock when hovering over upload section
+    if (document.pointerLockElement) {
+        document.exitPointerLock();
+    }
+});
+modelInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        loadModel(file);
+    }
+});
+
+// Model loading function
+function loadModel(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const data = e.target.result;
+        const loader = new GLTFLoader();
+        if (file.name.toLowerCase().endsWith('.glb')) {
+            loader.parse(
+                data,
+                '',
+                (gltf) => {
+                    // Remove existing building
+                    scene.remove(building);
+                    // Add new model
+                    const model = gltf.scene;
+                    scene.add(model);
+                    // Enable shadows
+                    model.traverse((child) => {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    // Adjust camera position
+                    camera.position.set(0, 1.6, 5);
+                    camera.lookAt(0, 1.6, 0);
+                    // Update room display
+                    document.getElementById('current-room').textContent = 'Custom Model';
+                    // Request pointer lock to start walkthrough
+                    canvas.requestPointerLock();
+                },
+                (error) => {
+                    console.error('Error parsing model:', error);
+                    alert('Failed to parse model. Please ensure it is a valid GLB file.');
+                }
+            );
+        } else {
+            // For .gltf
+            try {
+                const json = JSON.parse(data);
+                // Check for external buffers
+                if (json.buffers) {
+                    for (const buffer of json.buffers) {
+                        if (buffer.uri && !buffer.uri.startsWith('data:')) {
+                            alert('GLTF files with external buffers are not supported. Please use .glb files or .gltf with embedded buffers (data URIs).');
+                            return;
+                        }
+                    }
+                }
+                loader.parse(
+                    json,
+                    '',
+                    (gltf) => {
+                        // Same as above
+                        scene.remove(building);
+                        const model = gltf.scene;
+                        scene.add(model);
+                        model.traverse((child) => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                            }
+                        });
+                        camera.position.set(0, 1.6, 5);
+                        camera.lookAt(0, 1.6, 0);
+                        document.getElementById('current-room').textContent = 'Custom Model';
+                        canvas.requestPointerLock();
+                    },
+                    (error) => {
+                        console.error('Error parsing model:', error);
+                        alert('Failed to parse model. Please ensure it is a valid GLTF file with embedded buffers.');
+                    }
+                );
+            } catch (error) {
+                console.error('Error parsing JSON:', error);
+                alert('Invalid GLTF file.');
+            }
+        }
+    };
+    if (file.name.toLowerCase().endsWith('.glb')) {
+        reader.readAsArrayBuffer(file);
+    } else {
+        reader.readAsText(file);
+    }
+}
 
 // First-person controls
 let moveForward = false;

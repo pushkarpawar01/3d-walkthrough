@@ -11,7 +11,20 @@
     
     <div id="ui-overlay">
         <div id="info">
-            <p>Room: <span id="current-room">Lobby</span></p>
+            <p>Status: <span id="current-room">Upload a 3D Model to Start</span></p>
+        </div>
+        <div id="upload-section">
+            <label for="model-upload">Upload 3D Model (.glb or .gltf with embedded buffers):</label>
+            <input type="file" id="model-upload" accept=".gltf,.glb">
+        </div>
+        <div id="instructions">
+            <h2>Walkthrough Controls</h2>
+            <div class="controls">
+                <p>WASD: Move</p>
+                <p>Mouse: Look around</p>
+                <p>Space: Fly up</p>
+                <p>Shift: Fly down</p>
+            </div>
         </div>
     </div>
 
